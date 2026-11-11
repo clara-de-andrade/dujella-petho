@@ -6,9 +6,11 @@ algorithm for approximating the root of a function (in this case, a polynomial
 function, where its coefficients are given) close to an initial value.
 """
 
-from mpmath import mpf, fabs
+from mpmath import mpf, fabs, mp
+from polynom import Poly
 
-def findroot(coeffs_in, init):
+
+def findroot(P: Poly, init: list) -> mpf:
     """
     Computes an approximation x of the root of a polynomial function P, where
 
@@ -18,10 +20,10 @@ def findroot(coeffs_in, init):
     dP are calculated using Horner's method.
     """
 
-    # Initialise x
+    # Initialise x to init
     x = mpf(init)
-    # Horner's method requires the coefficients to be iterated in reverse order
-    coeffs = list(reversed(coeffs_in))
+    # Initialise derivative of P
+    dP = P.d
     
     while True:
         # Computes P and its derivative dP using Horner's method. Note that:
@@ -38,13 +40,7 @@ def findroot(coeffs_in, init):
         #    dP_0(x) = 0,
         #    dP_(i + 1)(x) = P_i(x) + x * dP_i(x), 0 <= i < d.
 
-        P  = coeffs[0]
-        dP = 0
-        for a in coeffs[1:]:
-            dP = dP * x + P
-            P  =  P * x + a
-
-        step = P / dP
+        step = P(x) / dP(x)
         tol = mp.eps * fabs(x)
 
         # Break loop if step is less than the tolerance for precision errors

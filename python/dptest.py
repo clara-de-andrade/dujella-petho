@@ -21,11 +21,12 @@ DP_test also computes N and returns a dictionary containing q, epsilon and N.
 """
 
 from mpmath import nint, fabs, floor, log
+from mpmath import mpf
+
 
 dist = lambda x: fabs(x - nint(x))
 
-
-def dptest(M, gamma, mu, log_A, log_B):
+def dptest(M: int, gamma: mpf, mu: mpf, log_A: mpf, log_B: mpf):
     """
     Computes q, epsilon, verifies the conditions for the Dujella-Petho
     reduction lemma, and returns q, epsilon and the reduced upper limit.
