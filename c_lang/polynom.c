@@ -4,14 +4,12 @@
 /* ************************************************************************* */
 
 // C Type of polynomials with integer coefficients
-typedef struct {
+struct _poly_t {
     size_t deg;
     mpz_t* coeffs;
-} poly_t;
+};
 
-/* ************************************************************************* */
-
-// Creates polynomial P(x) = coeffs[0] + ... + coeffs[deg - 1] * x**(deg - 1).
+// Creates a new polynomial coeffs[0] + ... + coeffs[deg] * x**(deg)
 poly_t* poly_new(size_t deg, mpz_t* coeffs)
 {
     poly_t* poly = malloc(sizeof(poly_t));
@@ -20,6 +18,17 @@ poly_t* poly_new(size_t deg, mpz_t* coeffs)
         goto end;
 
     poly->deg = deg;
+
+    if (coeffs == (mpz_t*) NULL)
+    {
+        coeffs = calloc(deg + 1, sizeof(mpz_t));
+        for (size_t i = 0; i <= deg; i++)
+        {
+            mpz_init(coeffs[i]);
+            mpz_set_ui(coeffs[i], 0);
+        }
+    }
+
     poly->coeffs = calloc(deg, sizeof(mpz_t));
 
     if (poly->coeffs == (mpz_t*) NULL || coeffs == (mpz_t*) NULL)
@@ -32,7 +41,8 @@ poly_t* poly_new(size_t deg, mpz_t* coeffs)
         return poly;
 }
 
-void poly_free(poly_t* poly)
+// Frees self
+void poly_free(poly_t* self)
 {
     if (poly == (poly_t*) NULL)
         return;
@@ -49,21 +59,40 @@ void poly_free(poly_t* poly)
 
 /* ************************************************************************* */
 
-size_t poly_get_deg(poly_t* poly);
-mpz_t* poly_get_coeffs(poly_t* poly);
-mpz_t poly_get_coeff(poly_t* poly, size_t n);
+// Getter for deg
+size_t poly_get_deg(poly_t* self);
+// Getter for coeffs
+mpz_t* poly_get_coeffs(poly_t* self);
+// Getter for coeffs[key]
+void poly_get_coeff(poly_t* self, size_t key, mpz_t op);
 
-void poly_set_deg(poly_t* poly, size_t deg);
-void poly_set_coeffs(poly_t* poly, mpz_t* coeffs);
-void poly_set_coeff(poly_t* poly, size_t n, mpz_t coeff);
+// Setter for deg
+void poly_set_deg(poly_t* self, size_t value);
+// Setter for coeffs
+void poly_set_coeffs(poly_t* self, mpz_t* value);
+// Setter for coeffs[key]
+void poly_set_coeff(poly_t* self, size_t key, mpz_t value);
 
 /* ************************************************************************* */
 
-// Computes the sum of two polynomials A(t) = a_0 + ... + a_m * t**m and
-// B = b_0 + ... + b_n * t**n, where m, n >= 0, by pointwise addition.
-poly_t* poly_add(poly_t* A, poly_t* B)
+// String representation of self
+char* poly_str(poly_t* self);
+// Number of coefficients in self
+size_t poly_len(poly_t* self);
+
+// Evaluate self(x) at x = other
+int64_t poly_eval_si(poly_t* self, int64_t other);
+uint64_t poly_eval_ui(poly_t* self, uint64_t other);
+void poly_eval_z(poly_t* self, mpz_t other, mpz_t op);
+void poly_eval_fr(poly_t* self, mpfr_t other, mpfr_t op);
+poly_t* polt_eval(poly_t* self, poly_t* other);
+
+/* ************************************************************************* */
+
+// Computes self(x) + other(x) by pointwise addition
+poly_t* poly_add(poly_t* self, poly_t* other)
 {
-    size_t deg = max(a->deg, b->deg);
+    size_t deg = max(A->deg, B->deg);
     mpz_t coeffs[deg];
 
     for (size_t i = 0; i < deg; i++)
@@ -79,11 +108,19 @@ poly_t* poly_add(poly_t* A, poly_t* B)
     return res;
 }
 
+// Computes self(x) - other(x) by pointwise addition
+poly_t* poly_sub(poly_t* self, poly_t* other);
+
+// Computes other * self(x) by scalar multiplication
+poly_t* poly_mul_si(poly_t* self, int64_t other);
+poly_t* poly_mul_ui(poly_t* self, uint64_t other);
+poly_t* poly_mul_z(poly_t* self, mpz other);
+poly_t* poly_mul_fr(poly_t* self, mpfr_t other);
+
 #define max(a, b) ((a) >= (b) ? (a) : (b))
 
-// Computes the product of two polynomials A(t) = a_0 + ... + a_m * t**m and
-// B = b_0 + ... + b_n * t**n, where m, n >= 0, using Karatsuba's algorithm.
-poly_t* poly_mul(poly_t* A, poly_t* B)
+// Computes self(x) * other(x) using Karatsuba's algorithm
+poly_t* poly_mul(poly_t* self, poly_t* other)
 {
     size_t d = 1 << mpz_sizeinbase(max(A->deg, B->deg), 2);
     if (d == 1)
@@ -164,19 +201,16 @@ poly_t* poly_mul(poly_t* A, poly_t* B)
     return res;
 }
 
+// Computes self(x) ** exp using exponentiation by squaring
+poly_t* poly_pow_ui(poly_t* self, uint64_t exp);
+poly_t* poly_pow_z(poly_t* self, mpz_t exp);
+
+// Computes -self(x) = (-1) * self(x)
+poly_t* poly_neg(poly_t* self);
+
 /* ************************************************************************* */
 
-poly_t* poly_diff(poly_t* P)
-{
-    // TODO
-}
-
-/* ************************************************************************* */
-
-// Evaluates polynomial P at real value x.
-mpfr_t poly_eval(poly_t* P, mpfr_t x)
-{
-    // TODO
-}
+// Differentiates of polynomial P(t) = a_0 + ... + a_n * t**n, where n >= 0.
+poly_t* poly_diff(poly_t* P);
 
 /* ************************************************************************* */
