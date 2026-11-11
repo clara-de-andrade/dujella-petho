@@ -4,7 +4,7 @@
 """
 """
 
-from polynom import Poly
+from polynom import Poly, Number
 
 
 def nthterm(P: Poly, Q: Poly, n : int) -> Number:
