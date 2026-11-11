@@ -17,8 +17,9 @@ def nthterm(P: Poly, Q: Poly, n : int) -> Number:
         raise ValueError
 
     while n > 0:
+        d = Q.deg
         # Q_minus(t) = Q(-t)
-        Q_minus = Poly(k, [Q[i] * (-1) ** (i % 2) for i in range(k + 1)])
+        Q_minus = Poly(d, [Q[i] * (-1) ** (i % 2) for i in range(d + 1)])
         # U(t) = P(t) * Q(-t)
         U = P * Q_minus
         # V(t) = Q(t) * Q(-t)
@@ -34,10 +35,10 @@ def nthterm(P: Poly, Q: Poly, n : int) -> Number:
         # coefficient of B(t)/V(t) if n is odd.
 
         if n & 1 == 0:
-            P = U[0::2][:k]
+            P = U[0::2][:d]
         else:
-            P = U[1::2][:k]
-        Q = V[0::2][:k + 1]
+            P = U[1::2][:d]
+        Q = V[0::2][:d + 1]
 
         # Halve n and iterate until n == 0
         n = n >> 1
@@ -45,22 +46,3 @@ def nthterm(P: Poly, Q: Poly, n : int) -> Number:
     # The n-th coefficient of the original P(t) / Q(t) is now equal to the 0-th
     # coefficient of P(t) / Q(t) after log_2(n) iterations.
     return P[0] // Q[0]
-
-def genfunc(k: int, coeffs: list, inits: list, n: int):
-    """
-    ...
-    """
-
-    if n >= 0 and n < k:
-        return inits[n]
-
-    P = Poly(
-        k - 1,
-        [inits[n] - sum(
-            coeffs[i - 1] * inits[n - i]
-            for i in range(1, n + 1))
-         for n in range(k)]
-    )
-    Q = -Poly(k, [-1] + coeffs)
-
-    return P, Q
