@@ -60,6 +60,8 @@ int main(void)
     
         for (size_t q = q_min; q <= q_max; q++)
         {
+            mpz_init(l_max[q]);
+
             mpfr_log_ui(l, q + 1, MPFR_RNDN);
             mpfr_pow_ui(l, l, 21, MPFR_RNDN);
             mpfr_mul(l, l, c, MPFR_RNDN);
@@ -114,7 +116,6 @@ int main(void)
         {
             dp[q] = calloc(a_max + 1, sizeof(dp_t));
 
-            mpfr_inits(A, B, NULL);
             mpfr_set_ui(A, 2 * q, MPFR_RNDN);
             mpfr_sqrt_ui(B, q, MPFR_RNDN);
 
@@ -149,10 +150,10 @@ int main(void)
         if (fp == NULL)
             exit(EXIT_FAILURE);
 
-        mpfr_t M_fr, q_fr;
-        mpfr_inits2(256, M_fr, q_fr, (mpfr_ptr) NULL);
+        mpfr_t M_fr, q_fr, n_fr, l_fr;
+        mpfr_inits2(256, M_fr, q_fr, n_fr, l_fr, NULL);
 
-        fprintf(fp, "q,a,M,A,B,gamma,mu,epsilon,N,q_conv\n");
+        fprintf(fp, "q,a,M,A,B,sigma,mu,q_conv,eps,k <,n <,l <\n");
 
         for (size_t q = q_min; q <= q_max; q++)
         {
@@ -162,22 +163,28 @@ int main(void)
                 mpfr_set_z(q_fr, dp[q][a]->q, MPFR_RNDN);
 
                 fprintf(fp, "%zu,%zu,", q, a);
-                mpfr_fprintf(fp, "%.49Re,%.50Rg,%.50Rg,%.50Rg,%.50Rg,%.49Re,",
+                mpfr_fprintf(fp, "%.49Re,%.50Rg,%.50Rg,%.50Rg,%.50Rg,%.49Re,%.49Re,",
                              M_fr,
                              dp[q][a]->A,
                              dp[q][a]->B,
                              dp[q][a]->gamma,
                              dp[q][a]->mu,
+                             q_fr,
                              dp[q][a]->epsilon);
                 gmp_fprintf(fp, "%Zd,", dp[q][a]->N);
-                mpfr_fprintf(fp, "%.49Re\n", q_fr);
+
+                mpfr_pow_z(n_fr, dp[q][a]->B, dp[q][a]->N, MPFR_RNDN);
+
+                mpfr_log_ui(l_fr, q, MPFR_RNDN);
+                mpfr_mul(l_fr, l_fr, n_fr, MPFR_RNDN);
+                mpfr_fprintf(fp, "%.49Re,%.49Re\n", n_fr, l_fr);
             }
 
             progbar(q, q_min, q_max);
         }
         puts("\nPRONTO!\n");
 
-        mpfr_clears(M_fr, q_fr, NULL);
+        mpfr_clears(M_fr, q_fr, n_fr, l_fr, NULL);
         fclose(fp);
     }
 
