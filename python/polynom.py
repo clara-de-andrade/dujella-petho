@@ -129,15 +129,10 @@ class Poly:
 
 
     def __call__(self, other: Poly | Number) -> Poly | Number:
-        # Evaluate polynomial self(x) at x = other using Horner's method,
-        # where self(x) = P_deg(x) and for all 0 <= n < deg we have that
-        #
-        #     P_0(x) = coeffs[deg],
-        #     P_(n + 1)(x) = coeffs[deg - n] + x * P_n(x)
         if isinstance(other, Number):
             acc = 0
             for coeff in reversed(self.__coeffs__):
-                acc = coeff + other * acc
+                acc = coeff + acc * other
             return acc
 
         if not isinstance(other, Poly):
@@ -294,12 +289,12 @@ class Poly:
         #
         #       self * other
         #     = (P0 + (x**m) * P1) * (Q0 + (x**m) * Q1)
-        #     = (P0 * Q0) + (x**m) * (P0 * Q1 + P1 * Q0) + (x**d) * (P1 * Q1);
+        #     = (P0 * Q0) + (x**m) * ((P0 * Q1) + (P1 * Q0)) + (x**d) * (P1 * Q1);
         #
         # and secondly, note that
         #
-        #       (P0 * Q1 + P1 * Q0)
-        #     = (P0 + P1) * (Q0 + Q1) - P0 * Q0) - (P1 * Q1);
+        #       (P0 * Q1) + (P1 * Q0)
+        #     = (P0 + P1) * (Q0 + Q1) - (P0 * Q0) - (P1 * Q1);
         #
         # therefore, we can compute a product self * other of polynomials of
         # degree d with just 3 products of polynomials of degree d / 2.
