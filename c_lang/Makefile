@@ -5,19 +5,19 @@ LIBS = -lm -lgmp -lmpfr
 
 SRCS = 	findroot.c 	\
        	polynom.c  	\
-		dptest.c 	\
-		reqseq.c    \
-		main.c
+		nthterm.c   \
+		dptest.c
 OBJS = $(SRCS:.c=.o)
-EXEC = main
 
 .PHONY: build clean
 
-$(EXEC): $(SRCS)
-	$(CC) $(CFLAGS) $(INCLUDES) $(SRCS) -o $(EXEC) $(LIBS)
+test_1: $(SRCS) test_1.c
+	$(CC) $(CFLAGS) $(INCLUDES) $(SRCS) test_1.c -o test_1 $(LIBS)
+	./test_1
 
-run: $(EXEC)
-	./$(EXEC)
+test_2: $(SRCS) test_2.c
+	$(CC) $(CFLAGS) $(INCLUDES) $(SRCS) test_2.c -o test_2 $(LIBS)
+	./test_2
 
 clean:
-	rm -f $(EXEC)
+	rm -f test_1 test_2

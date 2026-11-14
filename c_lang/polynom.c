@@ -1,216 +1,639 @@
-#include <stdio.h>
 #include "polynom.h"
 
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+#include <string.h>
+
 /* ************************************************************************* */
 
-// C Type of polynomials with integer coefficients
-struct _poly_t {
-    size_t deg;
-    mpz_t* coeffs;
-};
+#define POLY_MUL_CUTOFF 32
 
-// Creates a new polynomial coeffs[0] + ... + coeffs[deg] * x**(deg)
-poly_t* poly_new(size_t deg, mpz_t* coeffs)
+#define do_nothing(x) (x)
+#define max(a, b) ((a) >= (b) ? (a) : (b))
+#define min(a, b) ((a) <= (b) ? (a) : (b))
+
+/* ************************************************************************* */
+
+void _poly_ap(void (*method)(struct _poly_t*), struct _poly_t* first, ...)
 {
-    poly_t* poly = malloc(sizeof(poly_t));
+    va_list args;
+    va_start(args, first);
 
-    if (poly == (poly_t*) NULL)
-        goto end;
-
-    poly->deg = deg;
-
-    if (coeffs == (mpz_t*) NULL)
+    struct _poly_t* current = first;
+    while (current != (struct _poly_t*) NULL)
     {
-        coeffs = calloc(deg + 1, sizeof(mpz_t));
-        for (size_t i = 0; i <= deg; i++)
-        {
-            mpz_init(coeffs[i]);
-            mpz_set_ui(coeffs[i], 0);
-        }
+        method(current);
+        current = va_arg(args, struct _poly_t*);
     }
-
-    poly->coeffs = calloc(deg, sizeof(mpz_t));
-
-    if (poly->coeffs == (mpz_t*) NULL || coeffs == (mpz_t*) NULL)
-        goto end;
-
-    for (size_t i = 0; i < deg; i++)
-        mpz_init_set(poly->coeffs[i], coeffs[i]);
-
-    end:
-        return poly;
+    
+    va_end(args);
 }
 
-// Frees self
-void poly_free(poly_t* self)
+void poly_init(poly_t rop)
 {
-    if (poly == (poly_t*) NULL)
+    rop->coeffs = malloc(sizeof(mpfr_t));
+    if (rop->coeffs == (mpfr_t*) NULL)
+        exit(EXIT_FAILURE);
+    mpfr_init_set_ui(rop->coeffs[0], 0, MPFR_RNDN);
+
+    rop->alloc = 1;
+    rop->deg = 0;
+}
+
+void poly_clear(poly_t rop)
+{
+    if (rop == (struct _poly_t*) NULL)
         return;
 
-    if (poly->coeffs == (mpz_t*) NULL)
-        goto end;
+    if (rop->coeffs == (mpfr_t*) NULL)
+        return;
     
-    for (size_t i = 0; i < poly->deg; i++)
-        mpz_clear(poly->coeffs[i]);
+    for (size_t i = 0; i < rop->alloc; i++)
+        mpfr_clear(rop->coeffs[i]);
+    free(rop->coeffs);
 
-    end:
-        free(poly);
+    rop->coeffs = (mpfr_t*) NULL;
 }
 
 /* ************************************************************************* */
 
-// Getter for deg
-size_t poly_get_deg(poly_t* self);
-// Getter for coeffs
-mpz_t* poly_get_coeffs(poly_t* self);
-// Getter for coeffs[key]
-void poly_get_coeff(poly_t* self, size_t key, mpz_t op);
-
-// Setter for deg
-void poly_set_deg(poly_t* self, size_t value);
-// Setter for coeffs
-void poly_set_coeffs(poly_t* self, mpz_t* value);
-// Setter for coeffs[key]
-void poly_set_coeff(poly_t* self, size_t key, mpz_t value);
-
-/* ************************************************************************* */
-
-// String representation of self
-char* poly_str(poly_t* self);
-// Number of coefficients in self
-size_t poly_len(poly_t* self);
-
-// Evaluate self(x) at x = other
-int64_t poly_eval_si(poly_t* self, int64_t other);
-uint64_t poly_eval_ui(poly_t* self, uint64_t other);
-void poly_eval_z(poly_t* self, mpz_t other, mpz_t op);
-void poly_eval_fr(poly_t* self, mpfr_t other, mpfr_t op);
-poly_t* polt_eval(poly_t* self, poly_t* other);
-
-/* ************************************************************************* */
-
-// Computes self(x) + other(x) by pointwise addition
-poly_t* poly_add(poly_t* self, poly_t* other)
+static void poly_realloc(poly_t rop, size_t alloc)
 {
-    size_t deg = max(A->deg, B->deg);
-    mpz_t coeffs[deg];
+    if (alloc <= rop->alloc)
+        return;
 
-    for (size_t i = 0; i < deg; i++)
-    {
-        mpz_init_set(coeffs[i], 0);
-        if (i < A->deg)
-            mpz_add(coeffs[i], coeffs[i], a->coeffs[i]);
-        if (i < B->deg)
-            mpz_add(coeffs[i], coeffs[i], b->coeffs[i]);
-    }
+    if (alloc > (SIZE_MAX / sizeof(mpfr_t)))
+        exit(EXIT_FAILURE);
 
-    poly_t* res = poly_new(deg, coeffs);
-    return res;
+    size_t new_alloc;
+    if (alloc > (SIZE_MAX / sizeof(mpfr_t)) / 2)
+        new_alloc = alloc;
+    else
+        new_alloc = alloc << 1;
+
+    mpfr_t* coeffs = realloc(rop->coeffs, new_alloc * sizeof(mpfr_t));
+    if (coeffs == (mpfr_t*) NULL)
+        exit(EXIT_FAILURE);
+    rop->coeffs = coeffs;
+
+    for (size_t i = rop->alloc; i < new_alloc; i++)
+        mpfr_init_set_ui(rop->coeffs[i], 0, MPFR_RNDN);
+    rop->alloc = new_alloc;
 }
 
-// Computes self(x) - other(x) by pointwise addition
-poly_t* poly_sub(poly_t* self, poly_t* other);
-
-// Computes other * self(x) by scalar multiplication
-poly_t* poly_mul_si(poly_t* self, int64_t other);
-poly_t* poly_mul_ui(poly_t* self, uint64_t other);
-poly_t* poly_mul_z(poly_t* self, mpz other);
-poly_t* poly_mul_fr(poly_t* self, mpfr_t other);
-
-#define max(a, b) ((a) >= (b) ? (a) : (b))
-
-// Computes self(x) * other(x) using Karatsuba's algorithm
-poly_t* poly_mul(poly_t* self, poly_t* other)
+void poly_set(poly_t rop, poly_t op)
 {
-    size_t d = 1 << mpz_sizeinbase(max(A->deg, B->deg), 2);
-    if (d == 1)
-    {
-        mpz_t coeffs[1];
-        mpz_init(coeffs[0]);
-        mpz_mul(coeffs[0], A->coeffs[0], B->coeffs[0]);
+    poly_set_deg(rop, op->deg);
 
-        poly_t* res = poly_new(1, coeffs);
-        return res;
+    for (size_t i = 0; i <= op->deg; i++)
+        mpfr_set(rop->coeffs[i], op->coeffs[i], MPFR_RNDN);
+}
+
+#define DEFINE_POLY_SET(SUFFIX, TYPE, SET_METHOD)   \
+    void poly_set_##SUFFIX(poly_t rop, TYPE op)     \
+    {                                               \
+        poly_set_deg(rop, 0);                       \
+        SET_METHOD(rop->coeffs[0], op, MPFR_RNDN);  \
     }
+
+DEFINE_POLY_SET(fr, mpfr_t,         mpfr_set)
+DEFINE_POLY_SET(z,  mpz_t,          mpfr_set_z)
+DEFINE_POLY_SET(ui, unsigned long,  mpfr_set_ui)
+DEFINE_POLY_SET(si, long,           mpfr_set_si)
+
+/* ************************************************************************* */
+
+static void poly_normalise(poly_t rop)
+{
+    while (rop->deg > 0)
+    {
+        if (mpfr_zero_p(rop->coeffs[rop->deg]))
+            rop->deg--;
+        else
+            break;
+    }
+}
+
+size_t poly_get_deg(poly_t op)
+{
+    return op->deg;
+}
+
+void poly_set_deg(poly_t rop, size_t deg)
+{
+    if (deg == SIZE_MAX)
+        exit(EXIT_FAILURE);
+    poly_realloc(rop, deg + 1);
+
+    if (deg < rop->deg)
+        for (size_t i = deg + 1; i <= rop->deg; i++)
+            mpfr_set_ui(rop->coeffs[i], 0, MPFR_RNDN);
+    else
+    if (deg > rop->deg)
+        for (size_t i = rop->deg + 1; i <= deg; i++)
+            mpfr_set_ui(rop->coeffs[i], 0, MPFR_RNDN);
+
+    rop->deg = deg;
+}
+
+
+void poly_get_coeff(mpfr_t rop, poly_t op, size_t index)
+{
+    if (index > op->deg)
+        mpfr_set_ui(rop, 0, MPFR_RNDN);
+    else
+        mpfr_set(rop, op->coeffs[index], MPFR_RNDN);
+}
+
+#define DEFINE_POLY_SET_COEFF(SUFFIX, TYPE, SET_METHOD, IS_ZERO)        \
+    void poly_set_coeff_##SUFFIX(poly_t rop, TYPE op, size_t index)     \
+    {                                                                   \
+        int op_is_zero = (IS_ZERO(op) == 0);                            \
+                                                                        \
+        if (index > rop->deg)                                           \
+        {                                                               \
+            if (op_is_zero)                                             \
+                return;                                                 \
+                                                                        \
+            poly_set_deg(rop, index);                                   \
+            SET_METHOD(rop->coeffs[index], op, MPFR_RNDN);              \
+        }                                                               \
+        else                                                            \
+        {                                                               \
+            SET_METHOD(rop->coeffs[index], op, MPFR_RNDN);              \
+            if (index == rop->deg && op_is_zero)                        \
+                poly_normalise(rop);                                    \
+        }                                                               \
+    }
+
+DEFINE_POLY_SET_COEFF(fr, mpfr_t,         mpfr_set,     mpfr_sgn)
+DEFINE_POLY_SET_COEFF(z,  mpz_t,          mpfr_set_z,   mpz_sgn)
+DEFINE_POLY_SET_COEFF(ui, unsigned long,  mpfr_set_ui,  do_nothing)
+DEFINE_POLY_SET_COEFF(si, long,           mpfr_set_si,  do_nothing)
+
+/* ************************************************************************* */
+
+void poly_eval(poly_t rop, poly_t op1, poly_t op2)
+{
+    if (op1->deg == 0)
+    {
+        mpfr_t coeff;
+        mpfr_init_set(coeff, op1->coeffs[0], MPFR_RNDN);
+
+        poly_set_fr(rop, coeff);
+        poly_normalise(rop);
+
+        mpfr_clear(coeff);
+        return;
+    }
+
+    if (op2->deg == 0)
+    {
+        mpfr_t coeff;
+        mpfr_init(coeff);
+
+        poly_eval_fr(coeff, op1, op2->coeffs[0]);
+        poly_set_fr(rop, coeff);
+
+        mpfr_clear(coeff);
+        return;
+    }
+
+    size_t d = op1->deg + 1;
+    if (d > (SIZE_MAX >> 1) + 1)
+        exit(EXIT_FAILURE);
+    d = 1ULL << (sizeof(unsigned long long) * 8 - __builtin_clzll(d - 1));
 
     size_t m = d >> 1;
-    mpz_t A0_coeffs[m];
-    mpz_t A1_coeffs[m];
-    mpz_t B0_coeffs[m];
-    mpz_t B1_coeffs[m];
 
-    for (size_t i = 0; i < m; i++)
-    {
-        mpz_init(A0_coeffs[i]);
-        if (i < A->deg)
-            mpz_set(A0_coeffs[i], A->coeffs[i]);
+    poly_t P0, P1;
+    poly_inits(P0, P1);
+
+    for (size_t i = 0; i <= op1->deg; i++)
+        if (i < m)
+            poly_set_coeff_fr(P0, op1->coeffs[i], i);
         else
-            mpz_set_ui(A0_coeffs[i], 0);
-        
-        mpz_init(B0_coeffs[i]);
-        if (i < B->deg)
-            mpz_set(B0_coeffs[i], B->coeffs[i]);
-        else
-            mpz_set_ui(B0_coeffs[i], 0);
-    }
+            poly_set_coeff_fr(P1, op1->coeffs[i], i - m);
 
-    poly_t* A0 = poly_new(m, A0_coeffs);
-    poly_t* B0 = poly_new(m, B0_coeffs);
+    poly_t P0_eval, P1_eval;
+    poly_inits(P0_eval, P1_eval);
 
-    for (size_t i = m; i < d; i++)
-    {
-        mpz_init(A1_coeffs[i]);
-        if (i < A->deg)
-            mpz_set(A1_coeffs[i], A->coeffs[i - m]);
-        else
-            mpz_set_ui(A1_coeffs[i], 0);
-        
-        mpz_init(B1_coeffs[i]);
-        if (i < B->deg)
-            mpz_set(B1_coeffs[i], B->coeffs[i - m]);
-        else
-            mpz_set_ui(B1_coeffs[i], 0);
-    }
+    poly_eval(P0_eval, P0, op2);
+    poly_eval(P1_eval, P1, op2);
 
-    poly_t* A1 = poly_new(m, A1_coeffs);
-    poly_t* B1 = poly_new(m, B1_coeffs);
+    poly_t temp;
+    poly_init(temp);
 
+    poly_pow_ui(temp, op2, m);
+    poly_mul(P1_eval, P1_eval, temp);
+    poly_add(rop, P0_eval, P1_eval);
 
-    poly_t* z0 = polymul(A0, B0);
-    poly_t* z1 = polymul(polyadd(A0, A1), polyadd(B0, B1));
-    poly_t* z2 = polymul(A1, B1);
-
-    mpz_t z3_coeffs[z1->deg];
-    for (size_t i = 0; i < z1->deg; i++)
-    {
-        mpz_init_set(z3_coeffs[i], 0);
-        mpz_sub(z3_coeffs[i], z1->coeffs[i], z0_coeffs[i]);
-        mpz_sub(z3_coeffs[i], z3->coeffs[i], z2_coeffs[i]);
-    }
-    poly_t* z3 = poly_new(z1->deg, z3_coeffs);
-
-    mpz_t coeffs[d << 1];
-    for (size_t i = 0; i < z0->deg; i++)
-        mpz_init_set(coeffs[i], z0->coeffs[i]);
-    for (size_t i = 0; i < z3->deg; i++)
-        mpz_init_set(coeffs[m + i], z3->coeffs[i]);
-    for (size_t i = 0; i < z2->deg; i++)
-        mpz_init_set(coeffs[d + i], z2->coeffs[i]);
-
-    poly_t* res = poly_new(deg, coeffs);
-    return res;
+    poly_clears(P0, P0_eval, P1, P1_eval, temp);
 }
 
-// Computes self(x) ** exp using exponentiation by squaring
-poly_t* poly_pow_ui(poly_t* self, uint64_t exp);
-poly_t* poly_pow_z(poly_t* self, mpz_t exp);
+#define DEFINE_POLY_EVAL(SUFFIX, TYPE, INIT_SET_METHOD)                         \
+    void poly_eval_##SUFFIX(mpfr_t rop, poly_t op1, TYPE op2)                   \
+    {                                                                           \
+        mpfr_t acc;                                                             \
+        mpfr_init_set_ui(acc, 0, MPFR_RNDN);                                    \
+                                                                                \
+        mpfr_t op2_fr;                                                          \
+        INIT_SET_METHOD(op2_fr, op2, MPFR_RNDN);                                \
+                                                                                \
+        for (size_t i = 0; i <= op1->deg; i++)                                  \
+            mpfr_fma(acc, acc, op2_fr, op1->coeffs[op1->deg - i], MPFR_RNDN);   \
+        mpfr_set(rop, acc, MPFR_RNDN);                                          \
+                                                                                \
+        mpfr_clears(acc, op2_fr, NULL);                                         \
+    }
 
-// Computes -self(x) = (-1) * self(x)
-poly_t* poly_neg(poly_t* self);
+DEFINE_POLY_EVAL(fr,    mpfr_t,         mpfr_init_set)
+DEFINE_POLY_EVAL(z,     mpz_t,          mpfr_init_set_z)
+DEFINE_POLY_EVAL(ui,    unsigned long,  mpfr_init_set_ui)
+DEFINE_POLY_EVAL(si,    long,           mpfr_init_set_si)
 
 /* ************************************************************************* */
 
-// Differentiates of polynomial P(t) = a_0 + ... + a_n * t**n, where n >= 0.
-poly_t* poly_diff(poly_t* P);
+static void str_append(char** buffer, size_t* len, size_t* cap, char* str)
+{
+    size_t add = strlen(str);
+    if (*len + add + 1 > *cap)
+    {
+        while (*len + add + 1 > *cap)
+            *cap <<= 1;
+        char* temp = realloc(*buffer, *cap);
+        if (temp == NULL)
+            exit(EXIT_FAILURE);
+        *buffer = temp;
+    }
+    memcpy(*buffer + *len, str, add + 1);
+    *len += add;
+        
+}
+
+char* poly_str(poly_t op)
+{
+    char* coeff_str = NULL;
+
+    if (op->deg == 0)
+    {
+        if (mpfr_asprintf(&coeff_str, "%Rg", op->coeffs[0]) < 0)
+            exit(EXIT_FAILURE);
+        return coeff_str;
+    }
+
+    size_t cap = 64;
+    size_t len = 0;
+    char* res = malloc(cap);
+    if (res == NULL)
+        exit(EXIT_FAILURE);
+    res[0] = '\0';
+
+    mpfr_t abs_coeff;
+    mpfr_init(abs_coeff);
+
+    int has_terms = 0;
+    char exp_buf[32];
+
+    for (size_t i = op->deg; i != (size_t) -1; i--)
+    {
+        if (mpfr_zero_p(op->coeffs[i]))
+            continue;
+
+        int is_neg = (mpfr_sgn(op->coeffs[i]) < 0);
+        mpfr_abs(abs_coeff, op->coeffs[i], MPFR_RNDN);
+
+        if (has_terms)
+            str_append(&res, &len, &cap, is_neg ? " - " : " + ");
+        else
+        if (is_neg)
+            str_append(&res, &len, &cap, "-");
+
+        if (!(i > 0 && mpfr_cmp_ui(abs_coeff, 1) == 0))
+        {
+            if (mpfr_asprintf(&coeff_str, "%Rg", abs_coeff) < 0)
+                exit(EXIT_FAILURE);
+            str_append(&res, &len, &cap, coeff_str);
+            mpfr_free_str(coeff_str);
+        }
+
+        if (i == 1)
+            str_append(&res, &len, &cap, "x");
+        else
+        if (i > 1)
+        {
+            snprintf(exp_buf, sizeof(exp_buf), "x**%zu", i);
+            str_append(&res, &len, &cap, exp_buf);
+        }
+
+        has_terms = 1;
+    }
+
+    mpfr_clear(abs_coeff);
+
+    if (!has_terms)
+        str_append(&res, &len, &cap, "0");
+
+    return res;
+}
+
+/* ************************************************************************* */
+
+void poly_neg(poly_t rop, poly_t op)
+{
+    poly_set_deg(rop, op->deg);
+
+    for (size_t i = 0; i <= op->deg; i++)
+        mpfr_neg(rop->coeffs[i], op->coeffs[i], MPFR_RNDN);
+
+    poly_normalise(rop);
+}
+
+void poly_add(poly_t rop, poly_t op1, poly_t op2)
+{
+    size_t deg = max(op1->deg, op2->deg);
+    
+    poly_set_deg(rop, deg);
+
+    for (size_t i = 0; i <= deg; i++)
+        if (i <= op1->deg && i <= op2->deg)
+            mpfr_add(rop->coeffs[i], op1->coeffs[i], op2->coeffs[i], MPFR_RNDN);
+        else if (i <= op1->deg)
+            mpfr_set(rop->coeffs[i], op1->coeffs[i], MPFR_RNDN);
+        else
+            mpfr_set(rop->coeffs[i], op2->coeffs[i], MPFR_RNDN);
+
+    poly_normalise(rop);
+}
+
+void poly_sub(poly_t rop, poly_t op1, poly_t op2)
+{
+    size_t deg = max(op1->deg, op2->deg);
+    
+    poly_set_deg(rop, deg);
+
+    for (size_t i = 0; i <= deg; i++)
+        if (i <= op1->deg && i <= op2->deg)
+            mpfr_sub(rop->coeffs[i], op1->coeffs[i], op2->coeffs[i], MPFR_RNDN);
+        else if (i <= op1->deg)
+            mpfr_set(rop->coeffs[i], op1->coeffs[i], MPFR_RNDN);
+        else
+            mpfr_neg(rop->coeffs[i], op2->coeffs[i], MPFR_RNDN);
+
+    poly_normalise(rop);
+}
+
+/* ************************************************************************* */
+
+#define poly_iszero(op) (op->deg == 0 && mpfr_zero_p(op->coeffs[0]))
+
+static void poly_cauchy(poly_t rop, poly_t op1, poly_t op2)
+{
+    size_t deg = op1->deg + op2->deg;
+
+    poly_t res;
+    poly_init(res);
+    poly_set_deg(res, deg);
+
+    mpfr_t cauchy;
+    mpfr_init(cauchy);
+
+    for (size_t k = 0; k <= deg; k++)
+    {
+        mpfr_set_ui(cauchy, 0, MPFR_RNDN);
+
+        size_t i_min = (k > op2->deg) ? (k - op2->deg) : 0;
+        size_t i_max = min(k, op1->deg);
+
+        for (size_t i = i_min; i <= i_max; i++)
+        {
+            if (mpfr_sgn(op1->coeffs[i]) == 0 || mpfr_sgn(op2->coeffs[k - i]) == 0)
+                continue;
+            mpfr_fma(cauchy, op1->coeffs[i], op2->coeffs[k - i], cauchy, MPFR_RNDN);
+        }
+        mpfr_set(res->coeffs[k], cauchy, MPFR_RNDN);
+    }
+
+    poly_normalise(res);
+    poly_set(rop, res);
+
+    poly_clear(res);
+    mpfr_clear(cauchy);
+}
+
+void poly_mul(poly_t rop, poly_t op1, poly_t op2)
+{
+    if (poly_iszero(op1) || poly_iszero(op2))
+    {
+        poly_set_ui(rop, 0);
+        return;
+    }
+
+    if (op1->deg > SIZE_MAX - op2->deg)
+        exit(EXIT_FAILURE);
+
+    size_t d = max(op1->deg, op2->deg) + 1;
+    if (d > (SIZE_MAX >> 1) + 1)
+        exit(EXIT_FAILURE);
+
+    if (d == 1)
+    {
+        mpfr_t coeff;
+        mpfr_init(coeff);
+
+        mpfr_mul(coeff, op1->coeffs[0], op2->coeffs[0], MPFR_RNDN);
+        poly_set_fr(rop, coeff);
+
+        mpfr_clear(coeff);
+        return;
+    }
+
+    if (d <= POLY_MUL_CUTOFF)
+    {
+        poly_cauchy(rop, op1, op2);
+        return;
+    }
+    d = 1ULL << (sizeof(unsigned long long) * 8 - __builtin_clzll(d - 1));
+
+    size_t m = d >> 1;
+
+    poly_t P0, P1, Q0, Q1;
+    poly_inits(P0, P1, Q0, Q1);
+
+    for (size_t i = 0; i <= op1->deg; i++)
+        if (i < m)
+            poly_set_coeff_fr(P0, op1->coeffs[i], i);
+        else
+            poly_set_coeff_fr(P1, op1->coeffs[i], i - m);
+
+    for (size_t i = 0; i <= op2->deg; i++)
+        if (i < m)
+            poly_set_coeff_fr(Q0, op2->coeffs[i], i);
+        else
+            poly_set_coeff_fr(Q1, op2->coeffs[i], i - m);
+
+    poly_t z0, z1, z2, temp, middle;
+    poly_inits(z0, z1, z2, temp, middle);
+
+    poly_mul(z0, P0, Q0);
+    poly_mul(z2, P1, Q1);
+
+    poly_add(z1, P0, P1);
+    poly_add(temp, Q0, Q1);
+    poly_mul(z1, z1, temp);
+
+    poly_add(middle, z0, z2);
+    poly_sub(middle, z1, middle);
+
+    poly_set(rop, z0);
+    poly_shift(temp, middle, m);
+    poly_add(rop, rop, temp);
+    poly_shift(temp, z2, d);
+    poly_add(rop, rop, temp);
+
+    poly_clears(P0, P1, Q0, Q1);
+    poly_clears(z0, z1, z2, temp, middle);
+}
+
+#define DEFINE_POLY_MUL(SUFFIX, TYPE, MUL_METHOD, IS_ZERO)                  \
+    void poly_mul_##SUFFIX(poly_t rop, poly_t op1, TYPE op2)                \
+    {                                                                       \
+        if (poly_iszero(op1) || (IS_ZERO(op2) == 0))                        \
+        {                                                                   \
+            poly_set_ui(rop, 0);                                            \
+            return;                                                         \
+        }                                                                   \
+                                                                            \
+        poly_set_deg(rop, op1->deg);                                        \
+                                                                            \
+        for (size_t i = 0; i <= op1->deg; i++)                              \
+            MUL_METHOD(rop->coeffs[i], op1->coeffs[i], op2, MPFR_RNDN);     \
+                                                                            \
+        poly_normalise(rop);                                                \
+    }
+
+DEFINE_POLY_MUL(fr,     mpfr_t,         mpfr_mul,       mpfr_sgn)
+DEFINE_POLY_MUL(z,      mpz_t,          mpfr_mul_z,     mpz_sgn)
+DEFINE_POLY_MUL(ui,     unsigned long,  mpfr_mul_ui,    do_nothing)
+DEFINE_POLY_MUL(si,     long,           mpfr_mul_si,    do_nothing)
+
+void poly_shift(poly_t rop, poly_t op, size_t exp)
+{
+    if (poly_iszero(op))
+    {
+        poly_set_ui(rop, 0);
+        return;
+    }
+
+    size_t old_deg = op->deg;
+    if (exp > SIZE_MAX - old_deg)
+        exit(EXIT_FAILURE);
+    poly_set_deg(rop, old_deg + exp);
+
+    for (size_t i = old_deg; i != (size_t) -1; i--)
+        mpfr_set(rop->coeffs[i + exp], op->coeffs[i], MPFR_RNDN);
+
+    for (size_t i = 0; i < exp; i++)
+        mpfr_set_ui(rop->coeffs[i], 0, MPFR_RNDN);
+
+    poly_normalise(rop);
+}
+
+/* ************************************************************************* */
+
+void poly_pow_z(poly_t rop, poly_t op1, mpz_t op2)
+{
+    if (mpz_cmp_ui(op2, 0) == 0)
+    {
+        poly_set_ui(rop, 1);
+        return;
+    }
+
+    if (mpz_cmp_ui(op2, 1) == 0)
+    {
+        poly_set(rop, op1);
+        return;
+    }
+
+    poly_t acc, base;
+    poly_init_set_ui(acc, 1);
+    poly_init_set(base, op1);
+
+    mpz_t exp;
+    mpz_init_set(exp, op2);
+
+    while (mpz_sgn(exp) > 0)
+    {
+        if (mpz_odd_p(exp))
+            poly_mul(acc, acc, base);
+        mpz_div_2exp(exp, exp, 1);
+        if (mpz_cmp_ui(exp, 0) > 0)
+            poly_mul(base, base, base);
+    }
+
+    poly_set(rop, acc);
+
+    mpz_clear(exp);
+    poly_clears(acc, base);
+}
+
+void poly_pow_ui(poly_t rop, poly_t op1, unsigned long op2)
+{
+    if (op2 == 0)
+    {
+        poly_set_ui(rop, 1);
+        return;
+    }
+
+    if (op2 == 1)
+    {
+        poly_set(rop, op1);
+        return;
+    }
+
+    poly_t acc, base;
+    poly_init_set_ui(acc, 1);
+    poly_init_set(base, op1);
+
+    while (op2 > 0)
+    {
+        if (op2 & 1)
+            poly_mul(acc, acc, base);
+        op2 >>= 1;
+        if (op2 > 0)
+            poly_mul(base, base, base);
+    }
+
+    poly_set(rop, acc);
+
+    poly_clears(acc, base);
+}
+
+/* ************************************************************************* */
+
+void poly_d(poly_t rop, poly_t op)
+{
+    if (op->deg == 0)
+    {
+        poly_set_ui(rop, 0);
+        return;
+    }
+
+    size_t orig_deg = op->deg;
+    size_t old_deg = rop->deg;
+    poly_realloc(rop, orig_deg);
+
+    for (size_t i = 1; i <= orig_deg; i++)
+        mpfr_mul_ui(rop->coeffs[i - 1], op->coeffs[i], i, MPFR_RNDN);
+
+    for (size_t i = orig_deg; i <= old_deg; i++)
+        mpfr_set_ui(rop->coeffs[i], 0, MPFR_RNDN);
+
+    rop->deg = orig_deg - 1;
+    poly_normalise(rop);
+}
 
 /* ************************************************************************* */

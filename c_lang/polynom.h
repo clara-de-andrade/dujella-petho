@@ -1,76 +1,118 @@
-#ifndef __POLYNOM_H__
-#define __POLYNOM_H__
+#ifndef POLYNOM_H
+#define POLYNOM_H
 
-#include <stdint.h>
-#include <mpfr.h>
 #include <gmp.h>
+#include <mpfr.h>
 
 /* ************************************************************************* */
 
-// C Type of polynomials with integer coefficients
-typedef struct _poly_t poly_t;
+struct _poly_t {
+    mpfr_t* coeffs;
+    size_t alloc;
+    size_t deg;
+};
 
-// Creates a new polynomial coeffs[0] + ... + coeffs[deg] * x**(deg)
-poly_t* poly_new(size_t deg, mpz_t* coeffs);
-// Frees self
-void poly_free(poly_t* self);
-
-/* ************************************************************************* */
-
-// Getter for deg
-size_t poly_get_deg(poly_t* self);
-// Getter for coeffs
-mpz_t* poly_get_coeffs(poly_t* self);
-// Getter for coeffs[key]
-void poly_get_coeff(poly_t* self, size_t key, mpz_t op);
-
-// Setter for deg
-void poly_set_deg(poly_t* self, size_t value);
-// Setter for coeffs
-void poly_set_coeffs(poly_t* self, mpz_t* value);
-// Setter for coeffs[key]
-void poly_set_coeff(poly_t* self, size_t key, mpz_t value);
+typedef struct _poly_t poly_t[1];
 
 /* ************************************************************************* */
 
-// String representation of self
-char* poly_str(poly_t* self);
-// Number of coefficients in self
-size_t poly_len(poly_t* self);
+void _poly_ap(void (*method)(struct _poly_t*), struct _poly_t* first, ...);
 
-// Evaluate self(x) at x = other
-int64_t poly_eval_si(poly_t* self, int64_t other);
-uint64_t poly_eval_ui(poly_t* self, uint64_t other);
-void poly_eval_z(poly_t* self, mpz_t other, mpz_t op);
-void poly_eval_fr(poly_t* self, mpfr_t other, mpfr_t op);
-poly_t* polt_eval(poly_t* self, poly_t* other);
+void poly_init(poly_t rop);
+#define poly_inits(...)  \
+    _poly_ap(poly_init, __VA_ARGS__, (struct _poly_t*) NULL)
+
+void poly_clear(poly_t rop);
+#define poly_clears(...) \
+    _poly_ap(poly_clear, __VA_ARGS__, (struct _poly_t*) NULL)
 
 /* ************************************************************************* */
 
-// Computes self(x) + other(x) by pointwise addition
-poly_t* poly_add(poly_t* self, poly_t* other);
-// Computes self(x) - other(x) by pointwise addition
-poly_t* poly_sub(poly_t* self, poly_t* other);
+void poly_set(poly_t rop, poly_t op);
+#define poly_init_set(rop, op)      \
+    do {                            \
+        poly_init(rop);             \
+        poly_set(rop, op);          \
+    } while (0)
 
-// Computes other * self(x) by scalar multiplication
-poly_t* poly_mul_si(poly_t* self, int64_t other);
-poly_t* poly_mul_ui(poly_t* self, uint64_t other);
-poly_t* poly_mul_z(poly_t* self, mpz other);
-poly_t* poly_mul_fr(poly_t* self, mpfr_t other);
-// Computes self(x) * other(x) using Karatsuba's algorithm
-poly_t* poly_mul(poly_t* self, poly_t* other);
+void poly_set_fr(poly_t rop, mpfr_t op);
+#define poly_init_set_fr(rop, op)   \
+    do {                            \
+        poly_init(rop);             \
+        poly_set_fr(rop, op);       \
+    } while (0)
 
-// Computes self(x) ** exp using exponentiation by squaring
-poly_t* poly_pow_ui(poly_t* self, uint64_t exp);
-poly_t* poly_pow_z(poly_t* self, mpz_t exp);
+void poly_set_z(poly_t rop, mpz_t op);
+#define poly_init_set_z(rop, op)    \
+    do {                            \
+        poly_init(rop);             \
+        poly_set_z(rop, op);        \
+    } while (0)
 
-// Computes -self(x) = (-1) * self(x)
-poly_t* poly_neg(poly_t* self);
+void poly_set_ui(poly_t rop, unsigned long op);
+#define poly_init_set_ui(rop, op)   \
+    do {                            \
+        poly_init(rop);             \
+        poly_set_ui(rop, op);       \
+    } while (0)
+
+void poly_set_si(poly_t rop, long op);
+#define poly_init_set_si(rop, op)   \
+    do {                            \
+        poly_init(rop);             \
+        poly_set_si(rop, op);       \
+    } while (0)
 
 /* ************************************************************************* */
 
-// Differentiates of polynomial P(t) = a_0 + ... + a_n * t**n, where n >= 0.
-poly_t* poly_diff(poly_t* P);
+size_t poly_get_deg(poly_t rop);
+void poly_set_deg(poly_t rop, size_t deg);
+
+void poly_get_coeff(mpfr_t rop, poly_t op, size_t index);
+void poly_set_coeff_fr(poly_t rop, mpfr_t op, size_t index);
+
+void poly_set_coeff_z(poly_t rop, mpz_t op, size_t index);
+void poly_set_coeff_ui(poly_t rop, unsigned long op, size_t index);
+void poly_set_coeff_si(poly_t rop, long op, size_t index);
+
+/* ************************************************************************* */
+
+void poly_eval(poly_t rop, poly_t op1, poly_t op2);
+void poly_eval_fr(mpfr_t rop, poly_t op1, mpfr_t op2);
+
+void poly_eval_z(mpfr_t rop, poly_t op1, mpz_t op2);
+void poly_eval_ui(mpfr_t rop, poly_t op1, unsigned long op2);
+void poly_eval_si(mpfr_t rop, poly_t op1, long op2);
+
+/* ************************************************************************* */
+
+char* poly_str(poly_t op);
+
+/* ************************************************************************* */
+
+void poly_neg(poly_t rop, poly_t op);
+void poly_add(poly_t rop, poly_t op1, poly_t op2);
+void poly_sub(poly_t rop, poly_t op1, poly_t op2);
+
+/* ************************************************************************* */
+
+void poly_mul(poly_t rop, poly_t op1, poly_t op2);
+void poly_mul_fr(poly_t rop, poly_t op1, mpfr_t op2);
+
+void poly_mul_z(poly_t rop, poly_t op1, mpz_t op2);
+void poly_mul_ui(poly_t rop, poly_t op1, unsigned long op2);
+void poly_mul_si(poly_t rop, poly_t op1, long op2);
+
+void poly_shift(poly_t rop, poly_t op, size_t exp);
+
+/* ************************************************************************* */
+
+void poly_pow_z(poly_t rop, poly_t op1, mpz_t op2);
+void poly_pow_ui(poly_t rop, poly_t op1, unsigned long op2);
+
+/* ************************************************************************* */
+
+void poly_d(poly_t rop, poly_t op);
 
 /* ************************************************************************* */
 
