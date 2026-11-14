@@ -1,5 +1,5 @@
-#ifndef __NTHTERM_H__
-#define __NTHTERM_H__
+#ifndef NTHTERM_H
+#define NTHTERM_H
 
 #include <gmp.h>
 
