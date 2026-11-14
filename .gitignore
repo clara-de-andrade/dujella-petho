@@ -1,2 +1,10 @@
 .vscode/
 python/__pycache__/
+
+*.pkl
+*.csv
+
+c_lang/test_1
+c_lang/test_1.exe
+c_lang/test_2
+c_lang/test_2.exe
