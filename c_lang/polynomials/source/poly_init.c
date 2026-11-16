@@ -1,4 +1,3 @@
-#include "poly_type.h"
 #include "internal.h"
 
 #include <stdarg.h>

@@ -17,8 +17,12 @@
  *     - [ ] poly_repr
  *     - [ ] poly_root
  *     - [ ] set_tol
+ *     - [ ] poly_mullow
  * [ ] Write more root-finding methods.
  * [ ] Write error-handling methods.
+ * [ ] Write function poly_mullow.
+ * [ ] Write macro poly_ap_coeffs.
+ * [ ] Write function poly_slice.
  */
 
 /* ************************************************************************* */

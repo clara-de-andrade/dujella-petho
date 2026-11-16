@@ -1,4 +1,3 @@
-#include "poly_ring.h"
 #include "internal.h"
 
 /* ************************************************************************* */
@@ -11,28 +10,28 @@ void poly_pow_z(poly_t rop, poly_t op1, mpz_t op2)
         exit(EXIT_FAILURE);
 
     // Base case: if `op2` is 0, set `rop` to 1
-    if (mpz_iszero(op2))
+    if (mpz_zero(op2))
     {
         poly_set_ui(rop, 1);
         return;
     }
 
     // Base case: if `op2` is 1, set `rop` to `op1`
-    if (mpz_isone(op2))
+    if (mpz_unit(op2))
     {
         poly_set(rop, op1);
         return;
     }
 
     // Degenerate case: if `op2 >= 1` and `op1` is 0, set `rop` to 0
-    if (poly_iszero(op1))
+    if (poly_zero(op1))
     {
         poly_set_ui(rop, 0);
         return;
     }
 
     // Degenerate case: if `op2 >= 1` and `op1` is 1, set `rop` to 1
-    if (poly_isone(op1))
+    if (poly_unit(op1))
     {
         poly_set_ui(rop, 1);
         return;
@@ -88,28 +87,28 @@ void poly_pow_z(poly_t rop, poly_t op1, mpz_t op2)
 void poly_pow_ui(poly_t rop, poly_t op1, unsigned long op2)
 {
     // Base case: if `op2` is 0, set `rop` to 1
-    if (ui_iszero(op2))
+    if (ui_zero(op2))
     {
         poly_set_ui(rop, 1);
         return;
     }
 
     // Base case: if `op2` is 1, set `rop` to `op1`
-    if (ui_isone(op2))
+    if (ui_unit(op2))
     {
         poly_set(rop, op1);
         return;
     }
 
     // Degenerate case: if `op2 >= 1` and `op1` is 0, set `rop` to 0
-    if (poly_iszero(op1))
+    if (poly_zero(op1))
     {
         poly_set_ui(rop, 0);
         return;
     }
 
     // Degenerate case: if `op2 >= 1` and `op1` is 1, set `rop` to 1
-    if (poly_isone(op1))
+    if (poly_unit(op1))
     {
         poly_set_ui(rop, 1);
         return;

@@ -1,4 +1,3 @@
-#include "poly_type.h"
 #include "internal.h"
 
 /* ************************************************************************* */
@@ -71,8 +70,8 @@ void poly_set_coeff_fr(poly_t rop, mpfr_t op, size_t index)
         }                                                               \
     }
 
-DEFINE_POLY_SET_COEFF(z,  mpz_t,          mpfr_set_z,   mpz_iszero)
-DEFINE_POLY_SET_COEFF(ui, unsigned long,  mpfr_set_ui,  ui_iszero)
-DEFINE_POLY_SET_COEFF(si, long,           mpfr_set_si,  si_iszero)
+DEFINE_POLY_SET_COEFF(z,  mpz_t,          mpfr_set_z,   mpz_zero)
+DEFINE_POLY_SET_COEFF(ui, unsigned long,  mpfr_set_ui,  ui_zero)
+DEFINE_POLY_SET_COEFF(si, long,           mpfr_set_si,  si_zero)
 
 /* ************************************************************************* */

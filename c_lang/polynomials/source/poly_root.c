@@ -1,5 +1,3 @@
-#include "poly_ring.h"
-#include "poly_root.h"
 #include "internal.h"
 
 /* ************************************************************************* */
@@ -7,7 +5,7 @@
 // Sets `rop` to `eps * max(1, |x|)`.
 static void set_tol(mpfr_t rop, mpfr_t op, mpfr_t eps)
 {
-    MPFR_GUARD_INIT(ptr, scratch, rop, rop == op);
+    MPFR_GUARD_INIT(ptr, scratch, rop, rop == op || rop == eps);
 
     mpfr_abs(ptr, op, MPFR_RNDN);
     if (mpfr_cmp_ui(ptr, 1) < 0)
@@ -24,9 +22,8 @@ static void set_tol(mpfr_t rop, mpfr_t op, mpfr_t eps)
 // failed to convergence or found a stationary point. 
 int poly_root(mpfr_t rop, poly_t poly, mpfr_t init)
 {
-    int status = POLY_ROOT_MAXITER;
-
     // TODO: document
+    int status = POLY_ROOT_MAXITER;
     mpfr_prec_t prec = mpfr_get_prec(rop);
     size_t max_iter = 64 + 2 * (size_t) prec;
 
@@ -44,14 +41,14 @@ int poly_root(mpfr_t rop, poly_t poly, mpfr_t init)
     for (size_t iter = 0; iter < max_iter; iter++)
     {
         poly_eval_fr(P_eval, poly, x);
-        if (mpfr_zero_p(P_eval))
+        if (mpfr_zero(P_eval))
         {
             status = POLY_ROOT_CONVERGENCE;
             break;
         }
 
         poly_eval_fr(dP_eval, d_poly, x);
-        if (mpfr_zero_p(dP_eval))
+        if (mpfr_zero(dP_eval))
         {
             status = POLY_ROOT_STATIONARY;
             break;

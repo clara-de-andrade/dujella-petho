@@ -1,7 +1,7 @@
 #ifndef POLY_INTERNAL_H
 #define POLY_INTERNAL_H
 
-#include "poly_type.h"
+#include "polynomials.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -18,28 +18,6 @@
 #define max(a, b) ((a) >= (b) ? (a) : (b))
 // Evaluates to minimum of two numbers, a and b.
 #define min(a, b) ((a) <= (b) ? (a) : (b))
-
-// Tests if `op` is zero, where `op` is either a polynomial or a number.
-#define mpfr_iszero(op) (mpfr_zero_p(op))
-#define mpz_iszero(op)  (mpz_sgn(op) == 0)
-#define ui_iszero(op)   (op == 0)
-#define si_iszero(op)   (op == 0)
-#define poly_iszero(op) ((op)->deg == 0 && mpfr_iszero((op)->coeffs[0])) 
-
-// Tests if `op` is one, where `op` is either a polynomial or a number.
-#define mpfr_isone(op) (!mpfr_nan_p(op) && mpfr_cmp_ui(op, 1) == 0)
-#define mpz_isone(op)  (mpz_cmp_ui(op, 1) == 0)
-#define ui_isone(op)   (op == 1)
-#define si_isone(op)   (op == 1)
-#define poly_isone(op) ((op)->deg == 0 && mpfr_isone((op)->coeffs[0]))
-
-/* ************************************************************************* */
-
-// Checks whether `ptr` points within array `base` of given length `len`.
-#define ptr_range(ptr, base, len)                           \
-    ((base) != NULL &&                                      \
-     (uintptr_t) (ptr) >= (uintptr_t) (base) &&             \
-     (uintptr_t) (ptr) <  (uintptr_t) ((base) + (len)))
 
 /* ************************************************************************* */
 
@@ -82,6 +60,12 @@
         mpfr_clear(scratch);
 
 /* ************************************************************************* */
+
+// Checks whether `ptr` points within array `base` of given length `len`.
+#define ptr_range(ptr, base, len)                           \
+    ((base) != NULL &&                                      \
+     (uintptr_t) (ptr) >= (uintptr_t) (base) &&             \
+     (uintptr_t) (ptr) <  (uintptr_t) ((base) + (len)))
 
 // Initialises guard for poly_t scalar aliasing
 #define POLY_SCALAR_GUARD_INIT(ptr, scratch, rop, op) \

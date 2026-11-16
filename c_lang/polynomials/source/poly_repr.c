@@ -1,4 +1,3 @@
-#include "poly_type.h"
 #include "internal.h"
 
 #include <stdio.h>
@@ -57,7 +56,7 @@ char* poly_repr(poly_t op)
 
     for (size_t i = op->deg; i != (size_t) -1; i--)
     {
-        if (mpfr_zero_p(op->coeffs[i]))
+        if (mpfr_zero(op->coeffs[i]))
             continue;
 
         int is_neg = (mpfr_sgn(op->coeffs[i]) < 0);

@@ -17,6 +17,27 @@
 
 /* ************************************************************************* */
 
+// Tests if `op` is zero, where `op` is a number.
+#define mpfr_zero(op) (mpfr_zero_p(op))
+#define mpz_zero(op)  (mpz_sgn(op) == 0)
+#define ui_zero(op)   (op == 0)
+#define si_zero(op)   (op == 0)
+
+// Tests if `op` is zero, where `op` is a polynomial.
+#define poly_zero(op) ((op)->deg == 0 && mpfr_zero((op)->coeffs[0]))
+
+
+// Tests if `op` is one, where `op` is a number.
+#define mpfr_unit(op) (!mpfr_nan_p(op) && mpfr_cmp_ui(op, 1) == 0)
+#define mpz_unit(op)  (mpz_cmp_ui(op, 1) == 0)
+#define ui_unit(op)   (op == 1)
+#define si_unit(op)   (op == 1)
+
+// Tests if `op` is one, where `op` is a polynomial.
+#define poly_unit(op) ((op)->deg == 0 && mpfr_unit((op)->coeffs[0]))
+
+/* ************************************************************************* */
+
 // Sets `rop` to the negation of `op`.
 void poly_neg(poly_t rop, poly_t op);
 // Sets `rop` to the sum of `op1` and `op2`.
@@ -26,10 +47,12 @@ void poly_sub(poly_t rop, poly_t op1, poly_t op2);
 
 /* ************************************************************************* */
 
-// Sets `rop` to the product of `op1` and `op2`. Computed for small degrees
-// of `op1` and `op2` by the Cauchy product formula for formal power series,
-// and by Karatsuba's algorithm for larger degrees.
-void poly_mul(poly_t rop, poly_t op1, poly_t op2);
+// Sets `rop` to the product of `op1` and `op2` modulo `x**d`.
+void poly_mullow(poly_t rop, poly_t op1, poly_t op2, size_t d);
+
+// Sets `rop` to the product of `op1` and `op2`.
+#define poly_mul(rop, op1, op2) \
+    poly_mullow(rop, op1, op2, op1->deg + op2->deg + 1)
 
 // Sets `rop` to the scalar product of `op1` by `op2`.
 void poly_mul_fr(poly_t rop, poly_t op1, mpfr_t op2);

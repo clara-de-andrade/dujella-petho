@@ -19,7 +19,7 @@
 // Sets `rop` to root of `poly` closest to `init`. Returns 0 on convergence,
 // positive if exceeded maximum number of iterations, and negative if either
 // failed to convergence or found a stationary point. 
-void poly_root(mpfr_t rop, poly_t poly, mpfr_t init);
+int poly_root(mpfr_t rop, poly_t poly, mpfr_t init);
 
 /* ************************************************************************* */
 
