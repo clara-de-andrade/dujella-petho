@@ -54,6 +54,9 @@ void poly_mullow(poly_t rop, poly_t op1, poly_t op2, size_t d);
 #define poly_mul(rop, op1, op2) \
     poly_mullow(rop, op1, op2, op1->deg + op2->deg + 1)
 
+// Sets `rop(x)` to the product of `op1(x)` by `x ** op2`.
+void poly_mul_exp(poly_t rop, poly_t op1, size_t op2);
+
 // Sets `rop` to the scalar product of `op1` by `op2`.
 void poly_mul_fr(poly_t rop, poly_t op1, mpfr_t op2);
 void poly_mul_z(poly_t rop, poly_t op1, mpz_t op2);
@@ -61,9 +64,6 @@ void poly_mul_ui(poly_t rop, poly_t op1, unsigned long op2);
 void poly_mul_si(poly_t rop, poly_t op1, long op2);
 
 /* ************************************************************************* */
-
-// Equivalent to setting `rop(x)` to the product of `op1(x)` by `x ** op2`.
-void poly_shift(poly_t rop, poly_t op1, size_t op2);
 
 // Sets `rop` to the power of `op1` by a non-negative integer `op2`.
 void poly_pow_z(poly_t rop, poly_t op1, mpz_t op2);

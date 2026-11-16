@@ -22,8 +22,10 @@
  * [ ] Write more root-finding methods.
  * [ ] Write error-handling methods.
  * [x] Write function poly_mullow.
+ * [ ] Write module poly_mod.
  * [ ] Write macro poly_ap_coeffs.
  * [ ] Write function poly_slice.
+ * [ ] Use poly_add and poly_mul_exp in poly_mul.
  */
 
 /* ************************************************************************* */
