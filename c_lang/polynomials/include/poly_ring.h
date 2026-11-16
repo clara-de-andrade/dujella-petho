@@ -17,7 +17,7 @@
 
 /* ************************************************************************* */
 
-// Tests if `op` is zero, where `op` is a number.
+// Tests if `op` is zero, where `op` is a scalar.
 #define mpfr_zero(op) (mpfr_zero_p(op))
 #define mpz_zero(op)  (mpz_sgn(op) == 0)
 #define ui_zero(op)   (op == 0)
@@ -27,7 +27,7 @@
 #define poly_zero(op) ((op)->deg == 0 && mpfr_zero((op)->coeffs[0]))
 
 
-// Tests if `op` is one, where `op` is a number.
+// Tests if `op` is one, where `op` is a scalar.
 #define mpfr_unit(op) (!mpfr_nan_p(op) && mpfr_cmp_ui(op, 1) == 0)
 #define mpz_unit(op)  (mpz_cmp_ui(op, 1) == 0)
 #define ui_unit(op)   (op == 1)
