@@ -1,10 +1,13 @@
 .vscode/
-python/__pycache__/
 
-c_lang/test_1
-c_lang/test_1.exe
-c_lang/test_2
-c_lang/test_2.exe
+c_lang/polynomials/build
+c_lang/polynomials/libpolynomials.a
 
-python/*.pkl
+c_lang/sequences/build
+c_lang/sequences/libsequences.a
+
+c_lang/tests/build/*
 c_lang/*.csv
+
+python/__pycache__/
+python/*.pkl
