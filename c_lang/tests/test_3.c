@@ -12,9 +12,9 @@
 
 /* ************************************************************************* */
 
-#define m_min  0
-#define k_min  2
-#define n_min  (k + 2)
+#define m_min 0
+#define k_min 3
+#define n_min (k + 2)
 
 /* ************************************************************************* */
 
@@ -37,24 +37,23 @@ void progbar(size_t i, size_t i_min, size_t i_max)
 
 /* ************************************************************************* */
 
-#define prec   (1 << 12)
-#define k_max   50
+#define prec (1 << 12)
+#define k_max 500
 
 int main(void)
 {
-    #ifdef _WIN32
-        setlocale(LC_ALL, ".UTF8");
-    #else
-        setlocale(LC_ALL, "");
-    #endif
+#ifdef _WIN32
+    setlocale(LC_ALL, ".UTF8");
+#else
+    setlocale(LC_ALL, "");
+#endif
 
     mpfr_set_default_prec(prec);
 
-
     puts("Calculando alpha e g...");
 
-    mpfr_t* alpha = calloc(k_max + 1, sizeof(mpfr_t));
-    mpfr_t* g = calloc(k_max + 1, sizeof(mpfr_t));
+    mpfr_t *alpha = calloc(k_max + 1, sizeof(mpfr_t));
+    mpfr_t *g = calloc(k_max + 1, sizeof(mpfr_t));
     {
         mpfr_t two;
         mpfr_init_set_ui(two, 2, MPFR_RNDN);
@@ -64,7 +63,7 @@ int main(void)
 
         mpfr_t temp;
         mpfr_init(temp);
-        
+
         for (size_t k = k_min; k <= k_max; k++)
         {
             for (size_t i = 0; i <= k; i++)
@@ -90,9 +89,9 @@ int main(void)
 
     puts("Calculando M0 e N0...");
 
-    mat_t* mat = calloc(k_max + 1, sizeof(mat_t));
-    mpz_t* M0 = calloc(k_max + 1, sizeof(mpz_t));
-    mpz_t* N0 = calloc(k_max + 1, sizeof(mpz_t));
+    mat_t *mat = calloc(k_max + 1, sizeof(mat_t));
+    mpz_t *M0 = calloc(k_max + 1, sizeof(mpz_t));
+    mpz_t *N0 = calloc(k_max + 1, sizeof(mpz_t));
     {
         mpfr_t temp;
         mpfr_init(temp);
@@ -131,9 +130,9 @@ int main(void)
 
     puts("Calculando eps e q para N0...");
 
-    dp_t* dp1 = calloc(k_max + 1, sizeof(dp_t));
-    mpz_t* M1 = calloc(k_max + 1, sizeof(mpz_t));
-    mpz_t* N1 = calloc(k_max + 1, sizeof(mpz_t));
+    dp_t *dp1 = calloc(k_max + 1, sizeof(dp_t));
+    mpz_t *M1 = calloc(k_max + 1, sizeof(mpz_t));
+    mpz_t *N1 = calloc(k_max + 1, sizeof(mpz_t));
     {
         mpfr_t temp, log_2;
         mpfr_inits(temp, log_2, NULL);
@@ -146,7 +145,7 @@ int main(void)
             mpfr_ui_div(dp1[k]->A, 1, log_2, MPFR_RNDN);
             mpfr_set_ui(dp1[k]->B, 2, MPFR_RNDN);
             mpz_set(dp1[k]->M, N0[k]);
-            
+
             mpfr_log(dp1[k]->gamma, alpha[k], MPFR_RNDN);
             mpfr_div(dp1[k]->gamma, dp1[k]->gamma, log_2, MPFR_RNDN);
 
@@ -169,9 +168,9 @@ int main(void)
 
     puts("Calculando eps e q para N1...");
 
-    dp_t* dp2 = calloc(k_max + 1, sizeof(dp_t));
-    mpz_t* M2 = calloc(k_max + 1, sizeof(mpz_t));
-    mpz_t* N2 = calloc(k_max + 1, sizeof(mpz_t));
+    dp_t *dp2 = calloc(k_max + 1, sizeof(dp_t));
+    mpz_t *M2 = calloc(k_max + 1, sizeof(mpz_t));
+    mpz_t *N2 = calloc(k_max + 1, sizeof(mpz_t));
     for (size_t k = k_min; k <= k_max; k++)
     {
         dp_init(dp2[k], prec);
@@ -193,16 +192,72 @@ int main(void)
         progbar(k, k_min, k_max);
     }
     puts("\nPRONTO!\n");
-        
+
+    puts("Testando F(k)_n = 2**m para m < M2, n < N2, ...");
+    for (size_t k = k_min; k <= k_max; k++)
+    {
+        int flag = 0;
+
+        mpz_t *F = calloc(k, sizeof(mpz_t));
+        for (size_t i = 0; i < k; i++)
+        {
+            mpz_init_set_ui(F[i], 1);
+            mpz_mul_2exp(F[i], F[i], i);
+        }
+
+        mpz_t temp;
+        mpz_init(temp);
+
+        size_t m_max = (size_t)mpz_get_ui(M2[k]);
+        size_t n_max = (size_t)mpz_get_ui(N2[k]);
+
+        for (size_t n = n_min; n <= n_max; n++)
+        {
+            mpz_set_ui(temp, 0);
+            for (size_t i = 0; i < k; i++)
+                mpz_add(temp, temp, F[i]);
+            for (size_t i = 0; i < k; i++)
+                mpz_set(F[i], (i < k - 1) ? F[i + 1] : temp);
+
+            for (size_t m = m_min; m <= m_max; m++)
+            {
+                mpz_ui_pow_ui(temp, 2, m);
+                if (mpz_cmp(F[k - 1], temp) == 0)
+                {
+                    printf(
+                        "\nSolução encontrada: (k, m, n) = (%lu, %lu, %lu)\n",
+                        k,
+                        m,
+                        n);
+                    flag = 1;
+                    break;
+                }
+            }
+
+            if (flag)
+                break;
+        }
+
+        mpz_clear(temp);
+        for (size_t i = 0; i < k; i++)
+            mpz_clear(F[i]);
+        free(F);
+
+        if (flag)
+            break;
+
+        progbar(k, k_min, k_max);
+    }
+    puts("\nPRONTO!\n");
+
     puts("Escrevendo dados em test_3.csv...");
     {
-        FILE* fp = fopen("test_3.csv", "w");
+        FILE *fp = fopen("test_3.csv", "w");
         if (fp == NULL)
             exit(EXIT_FAILURE);
 
-        
-mpfr_t M0_fr, N0_fr, q_fr, M1_fr, N1_fr, M2_fr, N2_fr;
-        mpfr_inits2(prec, M0_fr, N0_fr, q_fr, M1_fr, N1_fr, M2_fr, N2_fr, (mpfr_ptr) NULL);
+        mpfr_t M0_fr, N0_fr, q_fr, M1_fr, N1_fr, M2_fr, N2_fr;
+        mpfr_inits2(prec, M0_fr, N0_fr, q_fr, M1_fr, N1_fr, M2_fr, N2_fr, (mpfr_ptr)NULL);
 
         fprintf(fp, "k,alpha_k,g_k,C_k,M0_k,N0_k,eps_k,q_k,M1_k,N1_k,M2_k,N2_k\n");
 
@@ -234,7 +289,7 @@ mpfr_t M0_fr, N0_fr, q_fr, M1_fr, N1_fr, M2_fr, N2_fr;
         }
         puts("\nPRONTO!\n");
 
-        mpfr_clears(M0_fr, N0_fr, q_fr, M1_fr, N1_fr, M2_fr, N2_fr, (mpfr_ptr) NULL);
+        mpfr_clears(M0_fr, N0_fr, q_fr, M1_fr, N1_fr, M2_fr, N2_fr, (mpfr_ptr)NULL);
 
         fclose(fp);
     }
