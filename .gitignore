@@ -1,9 +1,9 @@
 .vscode/
 
-c_lang/polynomials/build
+c_lang/polynomials/build/*
 c_lang/polynomials/libpolynomials.a
 
-c_lang/sequences/build
+c_lang/sequences/build/*
 c_lang/sequences/libsequences.a
 
 c_lang/tests/build/*
